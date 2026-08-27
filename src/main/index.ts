@@ -7,6 +7,8 @@ import { buildMenu } from './menu.js'
 import type { CreateSessionOptions, PersistedState, SessionId } from '@shared/types'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
+/** build/icon.png, from out/main at runtime. Packaged builds use the bundled .icns. */
+const iconPath = path.join(dirname, '../../build/icon.png')
 
 let mainWindow: BrowserWindow | null = null
 let registry: SessionRegistry
@@ -28,6 +30,7 @@ function createWindow(): void {
     backgroundColor: '#11131a',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 14, y: 14 },
+    ...(process.platform === 'darwin' ? {} : { icon: iconPath }),
     webPreferences: {
       preload: path.join(dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -75,12 +78,38 @@ function registerIpc(): void {
   }))
 }
 
+// A second instance would share workspaces.json with the first and silently
+// overwrite its layout, so hand focus to the running window instead.
+const hasInstanceLock = app.requestSingleInstanceLock()
+
+if (!hasInstanceLock) {
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+})
+
 void app.whenReady().then(() => {
+  if (!hasInstanceLock) return
+
   store = new Store(app.getPath('userData'))
   registry = new SessionRegistry(
     (event) => send('pty:data', event),
     (event) => send('pty:exit', event)
   )
+
+  // Packaged macOS builds take their icon from the bundle; in development the
+  // dock would otherwise show the generic Electron icon.
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    try {
+      app.dock?.setIcon(iconPath)
+    } catch {
+      // A missing icon during development is not worth failing the launch over.
+    }
+  }
 
   registerIpc()
   buildMenu(() => mainWindow)

@@ -42,14 +42,14 @@ export type Action =
   | { type: 'select-workspace-index'; index: number }
   | { type: 'cycle-workspace'; delta: number }
   | { type: 'rename-workspace'; workspaceId: string; name: string }
-  | { type: 'split'; dir: 'h' | 'v'; cwd?: string }
+  | { type: 'split'; dir: 'h' | 'v'; cwd?: string; paneId?: string }
   | { type: 'close-pane'; paneId?: string }
   | { type: 'restart-pane'; paneId?: string }
   | { type: 'focus-pane'; paneId: string }
   | { type: 'focus-direction'; dir: Direction }
   | { type: 'set-ratio'; path: Path; ratio: number }
   | { type: 'tidy' }
-  | { type: 'zoom' }
+  | { type: 'zoom'; paneId?: string }
   | { type: 'preset'; size: number; cwd: string }
   | { type: 'pane-meta'; paneId: string; patch: Partial<PaneMeta> }
   | { type: 'settings'; patch: Partial<Settings> }
@@ -148,12 +148,14 @@ export function reducer(state: AppState, action: Action, ids: IdSource): AppStat
 
     case 'split':
       return updateActive((workspace) => {
+        const target = action.paneId ?? workspace.focusedPaneId
+        if (!findPane(workspace.layout, target)) return workspace
         const paneId = ids.pane()
         const sessionId = ids.session()
-        const cwd = action.cwd ?? workspace.panes[workspace.focusedPaneId]?.cwd ?? ''
+        const cwd = action.cwd ?? workspace.panes[target]?.cwd ?? ''
         return {
           ...workspace,
-          layout: splitPane(workspace.layout, workspace.focusedPaneId, action.dir, {
+          layout: splitPane(workspace.layout, target, action.dir, {
             id: paneId,
             sessionId
           }),
@@ -224,10 +226,13 @@ export function reducer(state: AppState, action: Action, ids: IdSource): AppStat
       return updateActive((workspace) => ({ ...workspace, layout: tidy(workspace.layout) }))
 
     case 'zoom':
-      return updateActive((workspace) => ({
-        ...workspace,
-        zoomedPaneId: workspace.zoomedPaneId ? undefined : workspace.focusedPaneId
-      }))
+      return updateActive((workspace) => {
+        const target = action.paneId ?? workspace.focusedPaneId
+        if (!findPane(workspace.layout, target)) return workspace
+        // Zooming a different pane than the zoomed one moves the zoom to it.
+        const zoomedPaneId = workspace.zoomedPaneId === target ? undefined : target
+        return { ...workspace, zoomedPaneId, focusedPaneId: target }
+      })
 
     case 'preset':
       return updateActive((workspace) => {

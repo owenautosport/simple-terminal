@@ -6,15 +6,23 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { PaneMeta, Settings } from '@shared/types'
 import { THEMES } from '@/theme'
+import { shortenPath } from '@/util/path'
 
 interface Props {
   paneId: string
   sessionId: string
   meta: PaneMeta
   settings: Settings
+  /** 1-based position in the layout, used when the shell reports no title. */
+  index: number
+  home: string
   focused: boolean
+  zoomed: boolean
   searchOpen: boolean
   onFocus: () => void
+  onSplit: (dir: 'h' | 'v') => void
+  onZoom: () => void
+  onClose: () => void
   onTitle: (title: string) => void
   onExit: (exitCode: number) => void
   onRestart: () => void
@@ -168,6 +176,49 @@ export function TerminalPane(props: Props): React.JSX.Element {
       onMouseDown={props.onFocus}
       data-pane-id={paneId}
     >
+      <div className="pane__bar">
+        <span className="pane__title" title={props.meta.cwd}>
+          {props.meta.title?.trim() || `Pane ${props.index}`}
+        </span>
+        <span className="pane__where">{shortenPath(props.meta.cwd, props.home, 28)}</span>
+        <span className="pane__actions">
+          <button
+            type="button"
+            onClick={() => props.onSplit('h')}
+            title="Split right (⌘D)"
+            aria-label="Split right"
+          >
+            ⬌
+          </button>
+          <button
+            type="button"
+            onClick={() => props.onSplit('v')}
+            title="Split down (⇧⌘D)"
+            aria-label="Split down"
+          >
+            ⬍
+          </button>
+          <button
+            type="button"
+            className={props.zoomed ? 'on' : undefined}
+            onClick={props.onZoom}
+            title={props.zoomed ? 'Restore layout (⇧⌘↩)' : 'Zoom pane (⇧⌘↩)'}
+            aria-label={props.zoomed ? 'Restore layout' : 'Zoom pane'}
+          >
+            {props.zoomed ? '⤡' : '⤢'}
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={props.onClose}
+            title="Close pane (⌘W)"
+            aria-label="Close pane"
+          >
+            ✕
+          </button>
+        </span>
+      </div>
+
       <div className="pane__term" ref={hostRef} />
 
       {props.searchOpen && focused && (

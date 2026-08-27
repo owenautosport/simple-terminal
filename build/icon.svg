@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#323a4e"/>
+      <stop offset="0.5" stop-color="#232838"/>
+      <stop offset="1" stop-color="#171b26"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#79839e" stop-opacity="0.85"/>
+      <stop offset="0.6" stop-color="#3a4258" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#0d0f15" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="pane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10131b"/>
+      <stop offset="1" stop-color="#0c0e14"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app shell, sized to the macOS icon grid -->
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#shell)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="183" fill="none" stroke="url(#rim)" stroke-width="3"/>
+
+  <!-- three panes: one tall on the left, two stacked on the right -->
+  <rect x="168" y="192" width="344" height="640" rx="28" fill="url(#pane)" stroke="#7aa2f7" stroke-width="10"/>
+  <rect x="546" y="192" width="310" height="302" rx="28" fill="url(#pane)" stroke="#525d7a" stroke-width="7"/>
+  <rect x="546" y="530" width="310" height="302" rx="28" fill="url(#pane)" stroke="#525d7a" stroke-width="7"/>
+
+  <!-- prompt and cursor: the one detail that must survive at 16px -->
+  <polyline points="232,318 314,392 232,466" fill="none" stroke="#7aa2f7" stroke-width="46"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="356" y="366" width="118" height="52" rx="16" fill="#7aa2f7"/>
+
+  <!-- output texture, deliberately faint: it reads as lines, not as detail -->
+  <g fill="#5c678a">
+    <rect x="232" y="576" width="212" height="26" rx="13"/>
+    <rect x="232" y="646" width="140" height="26" rx="13"/>
+  </g>
+  <g fill="#4a5470">
+    <rect x="600" y="272" width="188" height="24" rx="12"/>
+    <rect x="600" y="336" width="120" height="24" rx="12"/>
+    <rect x="600" y="610" width="188" height="24" rx="12"/>
+    <rect x="600" y="674" width="120" height="24" rx="12"/>
+  </g>
+</svg>
