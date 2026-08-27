@@ -11,6 +11,8 @@ Built with Electron, node-pty and xterm.js. MIT licensed.
 ## What it does
 
 - **Tabbed workspaces** — each tab is its own pane layout, renamed by double-clicking it
+- **A title bar on every pane** — its name and directory, plus split-right, split-down, zoom
+  and close buttons that act on *that* pane, whether or not it is the focused one
 - **Split any pane** left/right or top/bottom; close a pane and the layout collapses cleanly
 - **Layout presets** for 1, 2, 4, 6, 8, 9, 12 and 16 panes, plus **Tidy** to re-square the grid
 - **Drag the dividers** to resize; the shell reflows as you go
@@ -21,7 +23,8 @@ Built with Electron, node-pty and xterm.js. MIT licensed.
 - **Settings** — font, size, theme (dark/light), shell, scrollback
 
 A pane whose shell exits stays where it is and offers a **Restart**, so a stray `exit` never
-rearranges your grid.
+rearranges your grid. Only one instance runs at a time — a second launch focuses the existing
+window rather than opening a rival window that would overwrite your saved layout.
 
 ## Shortcuts
 

@@ -146,3 +146,71 @@ describe('settings', () => {
     expect(state.settings.theme).toBe('dark')
   })
 })
+
+describe('per-pane actions from a pane title bar', () => {
+  it('splits the named pane, not the focused one', () => {
+    const two = dispatch(start(), { type: 'split', dir: 'h' })
+    const [first, second] = listPanes(activeWorkspace(two).layout)
+    expect(activeWorkspace(two).focusedPaneId).toBe(second!.id)
+
+    const three = dispatch(two, { type: 'split', dir: 'v', paneId: first!.id })
+    const panes = listPanes(activeWorkspace(three).layout)
+    expect(panes).toHaveLength(3)
+    // The new pane is the first one's sibling, so it sorts next to it.
+    expect(panes.map((p) => p.id).indexOf(first!.id)).toBe(0)
+    expect(panes[1]!.id).not.toBe(second!.id)
+  })
+
+  it('inherits the named pane cwd, not the focused pane cwd', () => {
+    const two = dispatch(start(), { type: 'split', dir: 'h' })
+    const [first] = listPanes(activeWorkspace(two).layout)
+    const moved = dispatch(two, {
+      type: 'pane-meta',
+      paneId: first!.id,
+      patch: { cwd: '/srv/app' }
+    })
+    const three = dispatch(moved, { type: 'split', dir: 'v', paneId: first!.id })
+    const workspace = activeWorkspace(three)
+    expect(workspace.panes[workspace.focusedPaneId]?.cwd).toBe('/srv/app')
+  })
+
+  it('zooms the named pane and focuses it', () => {
+    const two = dispatch(start(), { type: 'split', dir: 'h' })
+    const [first, second] = listPanes(activeWorkspace(two).layout)
+    const zoomed = dispatch(two, { type: 'zoom', paneId: first!.id })
+    expect(activeWorkspace(zoomed).zoomedPaneId).toBe(first!.id)
+    expect(activeWorkspace(zoomed).focusedPaneId).toBe(first!.id)
+    expect(second!.id).not.toBe(first!.id)
+  })
+
+  it('moves the zoom when a different pane is zoomed', () => {
+    const two = dispatch(start(), { type: 'split', dir: 'h' })
+    const [first, second] = listPanes(activeWorkspace(two).layout)
+    const zoomedFirst = dispatch(two, { type: 'zoom', paneId: first!.id })
+    const zoomedSecond = dispatch(zoomedFirst, { type: 'zoom', paneId: second!.id })
+    expect(activeWorkspace(zoomedSecond).zoomedPaneId).toBe(second!.id)
+  })
+
+  it('unzooms when the already-zoomed pane is zoomed again', () => {
+    const two = dispatch(start(), { type: 'split', dir: 'h' })
+    const [first] = listPanes(activeWorkspace(two).layout)
+    const zoomed = dispatch(two, { type: 'zoom', paneId: first!.id })
+    expect(activeWorkspace(dispatch(zoomed, { type: 'zoom', paneId: first!.id })).zoomedPaneId)
+      .toBeUndefined()
+  })
+
+  it('closes the named pane and leaves the others alone', () => {
+    const three = dispatch(start(), { type: 'split', dir: 'h' }, { type: 'split', dir: 'v' })
+    const [first] = listPanes(activeWorkspace(three).layout)
+    const closed = dispatch(three, { type: 'close-pane', paneId: first!.id })
+    const remaining = listPanes(activeWorkspace(closed).layout)
+    expect(remaining).toHaveLength(2)
+    expect(remaining.map((p) => p.id)).not.toContain(first!.id)
+  })
+
+  it('ignores a split or zoom aimed at a pane that is gone', () => {
+    const state = start()
+    expect(dispatch(state, { type: 'split', dir: 'h', paneId: 'ghost' })).toEqual(state)
+    expect(dispatch(state, { type: 'zoom', paneId: 'ghost' })).toEqual(state)
+  })
+})

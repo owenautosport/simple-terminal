@@ -75,7 +75,23 @@ function registerIpc(): void {
   }))
 }
 
+// A second instance would share workspaces.json with the first and silently
+// overwrite its layout, so hand focus to the running window instead.
+const hasInstanceLock = app.requestSingleInstanceLock()
+
+if (!hasInstanceLock) {
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+})
+
 void app.whenReady().then(() => {
+  if (!hasInstanceLock) return
+
   store = new Store(app.getPath('userData'))
   registry = new SessionRegistry(
     (event) => send('pty:data', event),

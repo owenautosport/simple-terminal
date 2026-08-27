@@ -6,8 +6,12 @@ import { TerminalPane } from './TerminalPane'
 interface Props {
   workspace: Workspace
   settings: Settings
+  home: string
   searchPaneId: string | null
   onFocusPane: (paneId: string) => void
+  onSplitPane: (paneId: string, dir: 'h' | 'v') => void
+  onZoomPane: (paneId: string) => void
+  onClosePane: (paneId: string) => void
   onTitle: (paneId: string, title: string) => void
   onExit: (paneId: string, exitCode: number) => void
   onRestart: (paneId: string) => void
@@ -84,7 +88,7 @@ export function PaneGrid(props: Props): React.JSX.Element {
 
   return (
     <div className="grid" ref={hostRef}>
-      {listPanes(workspace.layout).map((pane) => {
+      {listPanes(workspace.layout).map((pane, index) => {
         const rect = rects.get(pane.id)
         const meta = workspace.panes[pane.id] ?? { cwd: '' }
         return (
@@ -106,9 +110,15 @@ export function PaneGrid(props: Props): React.JSX.Element {
               sessionId={pane.sessionId}
               meta={meta}
               settings={props.settings}
+              index={index + 1}
+              home={props.home}
               focused={workspace.focusedPaneId === pane.id}
+              zoomed={workspace.zoomedPaneId === pane.id}
               searchOpen={props.searchPaneId === pane.id}
               onFocus={() => props.onFocusPane(pane.id)}
+              onSplit={(dir) => props.onSplitPane(pane.id, dir)}
+              onZoom={() => props.onZoomPane(pane.id)}
+              onClose={() => props.onClosePane(pane.id)}
               onTitle={(title) => props.onTitle(pane.id, title)}
               onExit={(code) => props.onExit(pane.id, code)}
               onRestart={() => props.onRestart(pane.id)}

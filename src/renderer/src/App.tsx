@@ -78,14 +78,17 @@ export function App(): React.JSX.Element {
 
   const cwdOfFocused = workspace.panes[workspace.focusedPaneId]?.cwd || home
 
-  const closeFocusedPane = useCallback(() => {
-    // A workspace's last pane closes the workspace instead of leaving it empty.
-    if (paneCount === 1 && state.workspaces.length > 1) {
-      dispatch({ type: 'close-workspace' })
-    } else {
-      dispatch({ type: 'close-pane' })
-    }
-  }, [paneCount, state.workspaces.length])
+  const closePane = useCallback(
+    (paneId?: string) => {
+      // A workspace's last pane closes the workspace instead of leaving it empty.
+      if (paneCount === 1 && state.workspaces.length > 1) {
+        dispatch({ type: 'close-workspace' })
+      } else {
+        dispatch({ type: 'close-pane', paneId })
+      }
+    },
+    [paneCount, state.workspaces.length]
+  )
 
   const runCommand = useCallback(
     (command: string, arg?: unknown) => {
@@ -103,7 +106,7 @@ export function App(): React.JSX.Element {
         case 'split':
           return dispatch({ type: 'split', dir: arg === 'v' ? 'v' : 'h', cwd: cwdOfFocused })
         case 'close-pane':
-          return closeFocusedPane()
+          return closePane()
         case 'restart-pane':
           return dispatch({ type: 'restart-pane' })
         case 'focus':
@@ -133,7 +136,7 @@ export function App(): React.JSX.Element {
           return undefined
       }
     },
-    [cwdOfFocused, closeFocusedPane, workspace.focusedPaneId, state.settings.fontSize]
+    [cwdOfFocused, closePane, workspace.focusedPaneId, state.settings.fontSize]
   )
 
   useEffect(
@@ -197,8 +200,14 @@ export function App(): React.JSX.Element {
         <PaneGrid
           workspace={workspace}
           settings={state.settings}
+          home={home}
           searchPaneId={searchPaneId}
           onFocusPane={(paneId) => dispatch({ type: 'focus-pane', paneId })}
+          onSplitPane={(paneId, dir) =>
+            dispatch({ type: 'split', dir, paneId, cwd: workspace.panes[paneId]?.cwd || home })
+          }
+          onZoomPane={(paneId) => dispatch({ type: 'zoom', paneId })}
+          onClosePane={closePane}
           onTitle={(paneId, title) => dispatch({ type: 'pane-meta', paneId, patch: { title } })}
           onExit={(paneId, exitCode) =>
             dispatch({ type: 'pane-meta', paneId, patch: { exitCode } })
