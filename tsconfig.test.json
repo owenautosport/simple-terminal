@@ -1,0 +1,33 @@
+{
+  "include": [
+    "test/**/*"
+  ],
+  "compilerOptions": {
+    "composite": false,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "jsx": "react-jsx",
+    "types": [
+      "node"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "paths": {
+      "@shared/*": [
+        "./src/shared/*"
+      ],
+      "@/*": [
+        "./src/renderer/src/*"
+      ]
+    }
+  }
+}

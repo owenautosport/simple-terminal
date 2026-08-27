@@ -1,0 +1,88 @@
+{
+  "name": "simple-terminal",
+  "version": "0.1.0",
+  "description": "A simple, keyboard-first manager for many terminals at once.",
+  "main": "./out/main/index.js",
+  "author": "owenautosport",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json && electron-vite build",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "npm run build && electron-builder --mac --publish never"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/owenautosport/simple-terminal.git"
+  },
+  "keywords": [
+    "terminal",
+    "electron",
+    "xterm",
+    "panes",
+    "tmux",
+    "multiplexer"
+  ],
+  "build": {
+    "appId": "io.github.owenautosport.simple-terminal",
+    "productName": "Simple Terminal",
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
