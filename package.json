@@ -59,30 +59,51 @@
   "build": {
     "appId": "io.github.owenautosport.simple-terminal",
     "productName": "Simple Terminal",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
-    "directories": {
-      "output": "release"
-    },
+    "asarUnpack": [
+      "**/node_modules/node-pty/**"
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
+    },
+    "dmg": {
+      "title": "Simple Terminal"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Development"
+      "category": "Development",
+      "icon": "build/icon.png"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.png"
     }
   }
 }

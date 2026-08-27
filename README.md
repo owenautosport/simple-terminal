@@ -48,6 +48,34 @@ window rather than opening a rival window that would overwrite your saved layout
 
 Shortcuts are native menu accelerators, so they work even while a terminal has focus.
 
+## Installing it as a real app
+
+```bash
+npm install
+npm run dist
+```
+
+That produces `release/Simple Terminal-<version>.dmg` and `release/mac/Simple Terminal.app`.
+Drag the app into `/Applications`, open it, then right-click its Dock icon and choose
+**Options → Keep in Dock** to pin it.
+
+The build is not code-signed, so a copy downloaded from elsewhere would need
+`xattr -dr com.apple.quarantine "/Applications/Simple Terminal.app"` before it will open. An
+app you built yourself on your own machine opens without that.
+
+### The icon
+
+`build/icon.svg` is the source. Regenerate the macOS icon from it with:
+
+```bash
+for s in 16 32 128 256 512; do
+  rsvg-convert -w $s   -h $s   build/icon.svg -o build/icon.iconset/icon_${s}x${s}.png
+  rsvg-convert -w $((s*2)) -h $((s*2)) build/icon.svg -o build/icon.iconset/icon_${s}x${s}@2x.png
+done
+rsvg-convert -w 1024 -h 1024 build/icon.svg -o build/icon.png
+iconutil -c icns build/icon.iconset -o build/icon.icns
+```
+
 ## Running it
 
 ```bash
@@ -60,7 +88,12 @@ npm run dist    # package a macOS app with electron-builder
 ```
 
 Requires Node 20+ and a toolchain able to build native modules (`xcode-select --install` on
-macOS). `node-pty` is rebuilt against Electron's ABI automatically after `npm install`.
+macOS). `node-pty` is rebuilt against Electron's ABI automatically after `npm install`, and is
+unpacked from the asar archive when packaging — it loads a native binding and execs a helper,
+neither of which works from inside an archive.
+
+A development run and an installed build share the same saved workspaces, since both resolve
+the same `userData` directory.
 
 ## How it is put together
 
