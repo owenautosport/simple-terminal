@@ -31,21 +31,30 @@ already have rather than opening a rival that would overwrite your saved layout.
 
 ## Installing it
 
+**macOS** — download the `.dmg` for your Mac from the
+[latest release](https://github.com/owenautosport/simple-terminal/releases/latest):
+`Simple Terminal-<version>.dmg` for an Intel Mac, `Simple Terminal-<version>-arm64.dmg` for
+Apple Silicon. Open it and drag the app into `/Applications`.
+
+The build is **not code-signed**, so the first launch needs its quarantine flag cleared —
+otherwise macOS reports it as damaged:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Simple Terminal.app"
+```
+
+Then open it as normal. To keep it around, right-click its Dock icon and choose
+**Options → Keep in Dock**.
+
+### Or build it yourself
+
 ```bash
 npm install
 npm run dist
 ```
 
 That produces `release/Simple Terminal-<version>.dmg` and `release/mac/Simple Terminal.app`.
-Drag the app into `/Applications` and open it. To keep it around, right-click its Dock icon and
-choose **Options → Keep in Dock**.
-
-The build is not code-signed. An app you built yourself opens normally; a copy moved from
-another machine would need its quarantine flag cleared first:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/Simple Terminal.app"
-```
+An app you built yourself opens without the quarantine step.
 
 ## Shortcuts
 
@@ -95,6 +104,9 @@ Two things that are easy to trip over:
   patterns, so `node_modules` has to be listed explicitly or the packaged app ships without it.
 - **A development run and an installed build share the same saved workspaces**, because both
   resolve the same `userData` directory.
+- **`npm run dist` leaves `node-pty` built for the last architecture it packaged** (arm64),
+  which breaks the real-pty test on an Intel Mac. Run `npx electron-builder install-app-deps`
+  to rebuild it for your own machine before `npm test`.
 
 ### Regenerating the icon
 
@@ -140,8 +152,10 @@ Three decisions worth knowing:
 
 ## Status
 
-Version 0.1.0. Built, run and tested on macOS (Intel). The electron-builder config carries
-Windows and Linux targets, but neither has been built or tested yet.
+Version 0.1.0 — [download it here](https://github.com/owenautosport/simple-terminal/releases/latest).
+Built, run and tested on macOS (Intel). The arm64 build is cross-compiled from an Intel Mac and
+has not been run on Apple Silicon. The electron-builder config carries Windows and Linux
+targets, but neither has been built or tested yet.
 
 Not in this version: **command blocks** (Warp-style collapsible per-command output) need OSC 133
 shell integration and are their own piece of work; likewise a file-browser sidebar and
