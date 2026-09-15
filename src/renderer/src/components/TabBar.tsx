@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Workspace } from '@shared/types'
 import { listPanes } from '@/layout/tree'
+import { CloseIcon, PlusIcon } from './icons'
 
 interface Props {
   workspaces: Workspace[]
@@ -26,7 +27,7 @@ export function TabBar(props: Props): React.JSX.Element {
             className={`tab${active ? ' tab--active' : ''}`}
             onMouseDown={() => props.onSelect(workspace.id)}
             onDoubleClick={() => setEditing(workspace.id)}
-            title={`${workspace.name} — ${paneCount} pane${paneCount === 1 ? '' : 's'}`}
+            title={`${workspace.name}: ${paneCount} pane${paneCount === 1 ? '' : 's'}. Double-click to rename.`}
           >
             {editing === workspace.id ? (
               <input
@@ -56,7 +57,7 @@ export function TabBar(props: Props): React.JSX.Element {
                       props.onClose(workspace.id)
                     }}
                   >
-                    ✕
+                    <CloseIcon size={12} />
                   </button>
                 )}
               </>
@@ -64,8 +65,14 @@ export function TabBar(props: Props): React.JSX.Element {
           </div>
         )
       })}
-      <button type="button" className="tabs__new" onClick={props.onNew} aria-label="New workspace">
-        +
+      <button
+        type="button"
+        className="tabs__new"
+        onClick={props.onNew}
+        aria-label="New tab"
+        title="New tab (⌘T)"
+      >
+        <PlusIcon size={14} />
       </button>
     </div>
   )

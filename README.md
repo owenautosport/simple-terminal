@@ -14,10 +14,16 @@ Built with Electron, node-pty and xterm.js. MIT licensed.
 ## What it does
 
 - **Tabbed workspaces** — each tab holds its own pane layout; double-click a tab to rename it
-- **A title bar on every pane** — its name and directory, plus split-right, split-down, zoom
-  and close buttons that act on *that* pane, whether or not it is the focused one
-- **Split any pane** left/right or top/bottom; close one and the layout collapses cleanly
-- **Layout presets** for 1, 2, 4, 6, 8, 9, 12 and 16 panes, plus **Tidy** to re-square the grid
+- **A title bar on every pane** — its name and directory, plus web, split-right, split-down,
+  zoom and close buttons that act on *that* pane, whether or not it is the focused one
+- **Split any pane** left/right or top/bottom; close one and the layout collapses cleanly — in
+  a grid, the pane above or below grows into the gap
+- **Layout presets** for 1, 2, 4, 6, 8, 9, 12 and 16 panes. Switching grids keeps the terminals
+  you already have running and only adds fresh shells for the new slots; **Even out** makes every
+  pane the same size again
+- **Web panes** (`⇧⌘B`) — turn any pane into a small browser with its own address bar, for docs or
+  the dev server you just started. The pane's shell keeps running while it shows the page, and
+  switching back brings it straight back
 - **Drag the dividers** to resize — the shell reflows as you drag
 - **Zoom** a pane to fill the window and back, leaving the others running underneath
 - **Quick switcher** (`⌘P`) — jump to any pane in any workspace by name or directory
@@ -66,17 +72,19 @@ focus — no key has to be wrestled away from the shell.
 | Split right | `⌘D` | `Ctrl+D` |
 | Split down | `⇧⌘D` | `Ctrl+Shift+D` |
 | Close pane | `⌘W` | `Ctrl+W` |
-| Restart pane | `⌘R` | `Ctrl+R` |
+| Restart pane (reload, in a web pane) | `⌘R` | `Ctrl+R` |
+| Switch pane to web / terminal | `⇧⌘B` | `Ctrl+Shift+B` |
+| Go to address | `⌘L` | `Ctrl+L` |
 | Zoom pane | `⇧⌘↩` | `Ctrl+Shift+Enter` |
 | Move focus | `⌥⌘` + arrows | `Ctrl+Alt` + arrows |
-| Tidy layout | `⇧⌘T` | `Ctrl+Shift+T` |
+| Even out panes | `⇧⌘T` | `Ctrl+Shift+T` |
 | Layout preset | `⌥⌘1`–`⌥⌘8` | `Ctrl+Alt+1`–`8` |
 | New tab | `⌘T` | `Ctrl+T` |
 | Close tab | `⇧⌘W` | `Ctrl+Shift+W` |
 | Select tab | `⌘1`–`⌘9` | `Ctrl+1`–`9` |
 | Next / previous tab | `⌃⇥` / `⌃⇧⇥` | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 | Quick switcher | `⌘P` | `Ctrl+P` |
-| Find in terminal | `⌘F` | `Ctrl+F` |
+| Find (in the terminal, or in the page) | `⌘F` | `Ctrl+F` |
 | Clear terminal | `⌘K` | `Ctrl+K` |
 | Bigger / smaller text | `⌘+` / `⌘-` | `Ctrl++` / `Ctrl+-` |
 | Settings | `⌘,` | `Ctrl+,` |
@@ -110,8 +118,8 @@ Two things that are easy to trip over:
 
 ### Regenerating the icon
 
-`build/icon.svg` is the source artwork; it was drawn small-first, so that at 16px the prompt and
-the split still read while the output lines fall away into texture.
+`build/icon.svg` is the source artwork: a tall pane holding an amber prompt, with two quieter panes
+beside it. It is drawn small-first, so the prompt and the split still read at 16px.
 
 ```bash
 mkdir -p build/icon.iconset
@@ -135,8 +143,8 @@ src/renderer/     React UI
   layout/tree.ts    pure binary split tree: split, close, ratios, tidy, geometry, neighbours
   layout/presets    the 1–16 pane grids
   state/reducer     workspaces, panes and settings as one pure reducer
-  components/       PaneGrid, TerminalPane, TabBar, Toolbar, QuickSwitcher, SettingsDialog
-src/shared/       types, the preload API contract, preset sizes
+  components/       PaneGrid, TerminalPane, BrowserPane, TabBar, Toolbar, QuickSwitcher, …
+src/shared/       types, the preload API contract, preset sizes, address-bar rules
 ```
 
 Three decisions worth knowing:
@@ -146,6 +154,11 @@ Three decisions worth knowing:
   mounted under a stable key while the layout changes around it.
 - **The layout maths and the reducer are pure functions**, with no Electron or React imports.
   That is why they can be tested directly, and it is where the tests are.
+- **Web panes are Electron `<webview>` guests with nothing of the app in them**: no preload, no
+  Node, sandboxed, and limited to http(s) addresses. Links that want a new window open in the
+  same pane. Sites are refused camera, microphone, location, notifications and every other
+  permission without a prompt. All web panes share one persistent session, so a login survives
+  a restart.
 - **Keystrokes typed before a pane's shell has started are buffered** in the renderer and
   flushed once the pty exists. The main process ignores writes to an unknown session, so
   without the buffer those keystrokes would vanish.
@@ -153,8 +166,7 @@ Three decisions worth knowing:
 ## Status
 
 Version 0.1.0 — [download it here](https://github.com/owenautosport/simple-terminal/releases/latest).
-Built, run and tested on macOS (Intel). The arm64 build is cross-compiled from an Intel Mac and
-has not been run on Apple Silicon. The electron-builder config carries Windows and Linux
+Built, run and tested on macOS, on both Intel and Apple Silicon. The electron-builder config carries Windows and Linux
 targets, but neither has been built or tested yet.
 
 Not in this version: **command blocks** (Warp-style collapsible per-command output) need OSC 133

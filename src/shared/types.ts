@@ -9,7 +9,15 @@ export type LayoutNode =
   | { kind: 'leaf'; id: PaneId; sessionId: SessionId }
   | { kind: 'split'; dir: SplitDir; ratio: number; a: LayoutNode; b: LayoutNode }
 
+export type PaneKind = 'terminal' | 'browser'
+
 export interface PaneMeta {
+  /** What the pane shows. Missing means terminal, which is what older saves hold. */
+  kind?: PaneKind
+  /** The address a web pane was last showing. */
+  url?: string
+  /** Page title reported by a web pane, kept apart from the shell's title. */
+  pageTitle?: string
   /** Directory the shell was started in. Persisted so restores land in the same place. */
   cwd: string
   /** Optional command sent to the shell right after it starts. */

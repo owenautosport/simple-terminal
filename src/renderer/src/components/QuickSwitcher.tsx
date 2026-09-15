@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Workspace } from '@shared/types'
-import { listPanes } from '@/layout/tree'
+import { readingOrder } from '@/layout/tree'
 import { shortenPath } from '@/util/path'
 
 export interface SwitcherEntry {
@@ -20,14 +20,15 @@ interface Props {
 
 export function collectEntries(workspaces: Workspace[], home = ''): SwitcherEntry[] {
   return workspaces.flatMap((workspace) =>
-    listPanes(workspace.layout).map((pane, index) => {
+    readingOrder(workspace.layout).map((pane, index) => {
       const meta = workspace.panes[pane.id]
+      const web = meta?.kind === 'browser'
       return {
         workspaceId: workspace.id,
         workspaceName: workspace.name,
         paneId: pane.id,
-        label: meta?.title?.trim() || `Pane ${index + 1}`,
-        detail: shortenPath(meta?.cwd ?? '', home)
+        label: (web ? meta?.pageTitle?.trim() : meta?.title?.trim()) || `Pane ${index + 1}`,
+        detail: web ? (meta?.url ?? '') : shortenPath(meta?.cwd ?? '', home)
       }
     })
   )

@@ -1,4 +1,12 @@
-import type { LayoutNode, PaneId, PaneMeta, PersistedState, Settings, Workspace } from '@shared/types'
+import type {
+  LayoutNode,
+  PaneId,
+  PaneKind,
+  PaneMeta,
+  PersistedState,
+  Settings,
+  Workspace
+} from '@shared/types'
 import { buildPreset } from '@/layout/presets'
 import {
   closePane,
@@ -6,6 +14,7 @@ import {
   leaf,
   listPanes,
   neighbour,
+  readingOrder,
   setRatioAt,
   setSessionId,
   splitPane,
@@ -51,6 +60,7 @@ export type Action =
   | { type: 'tidy' }
   | { type: 'zoom'; paneId?: string }
   | { type: 'preset'; size: number; cwd: string }
+  | { type: 'set-pane-kind'; kind: PaneKind; paneId?: string }
   | { type: 'pane-meta'; paneId: string; patch: Partial<PaneMeta> }
   | { type: 'settings'; patch: Partial<Settings> }
 
@@ -236,8 +246,23 @@ export function reducer(state: AppState, action: Action, ids: IdSource): AppStat
 
     case 'preset':
       return updateActive((workspace) => {
+        // Existing panes keep their ids and sessions, so their terminals keep running;
+        // they take the first slots and any extra slots get fresh shells.
+        let kept = readingOrder(workspace.layout).slice(0, action.size)
+        const focused = findPane(workspace.layout, workspace.focusedPaneId)
+        if (focused && !kept.includes(focused)) {
+          // Shrinking drops panes from the end, but never the one being worked in.
+          const order = readingOrder(workspace.layout)
+          kept = [...kept.slice(0, -1), focused].sort((p, q) => order.indexOf(p) - order.indexOf(q))
+        }
         const panes: Record<PaneId, PaneMeta> = {}
+        const queue = [...kept]
         const layout = buildPreset(action.size, () => {
+          const existing = queue.shift()
+          if (existing) {
+            panes[existing.id] = workspace.panes[existing.id] ?? { cwd: action.cwd }
+            return existing
+          }
           const id = ids.pane()
           panes[id] = { cwd: action.cwd }
           return { id, sessionId: ids.session() }
@@ -246,8 +271,20 @@ export function reducer(state: AppState, action: Action, ids: IdSource): AppStat
           ...workspace,
           layout,
           panes,
-          focusedPaneId: listPanes(layout)[0]!.id,
+          focusedPaneId: focused && panes[focused.id] ? focused.id : readingOrder(layout)[0]!.id,
           zoomedPaneId: undefined
+        }
+      })
+
+    case 'set-pane-kind':
+      return updateActive((workspace) => {
+        const paneId = action.paneId ?? workspace.focusedPaneId
+        const meta = workspace.panes[paneId]
+        if (!meta || !findPane(workspace.layout, paneId)) return workspace
+        return {
+          ...workspace,
+          panes: { ...workspace.panes, [paneId]: { ...meta, kind: action.kind } },
+          focusedPaneId: paneId
         }
       })
 

@@ -1,10 +1,11 @@
 import path from 'node:path'
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { SessionRegistry } from './sessions.js'
 import { Store, homeDir } from './store.js'
 import { buildMenu } from './menu.js'
 import type { CreateSessionOptions, PersistedState, SessionId } from '@shared/types'
+import { WEB_PANE_PARTITION, isWebUrl } from '@shared/url'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 /** build/icon.png, from out/main at runtime. Packaged builds use the bundled .icns. */
@@ -27,7 +28,7 @@ function createWindow(): void {
     minWidth: 640,
     minHeight: 400,
     show: false,
-    backgroundColor: '#11131a',
+    backgroundColor: '#15181e',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 14, y: 14 },
     ...(process.platform === 'darwin' ? {} : { icon: iconPath }),
@@ -35,7 +36,9 @@ function createWindow(): void {
       preload: path.join(dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      // Web panes are <webview> guests; will-attach-webview below locks each one down.
+      webviewTag: true
     }
   })
 
@@ -45,6 +48,16 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  // A web pane gets an ordinary sandboxed page and nothing of ours: no preload,
+  // no Node, and only http(s) addresses.
+  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+    delete webPreferences.preload
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+    webPreferences.sandbox = true
+    if (!isWebUrl(params.src ?? '')) event.preventDefault()
   })
 
   const devServerUrl = process.env['ELECTRON_RENDERER_URL']
@@ -78,6 +91,21 @@ function registerIpc(): void {
   }))
 }
 
+/**
+ * Electron grants every permission request by default. A web pane is an arbitrary
+ * website, so it gets only the harmless ones; camera, microphone, location,
+ * notifications and the rest are refused without a prompt.
+ */
+const WEB_PANE_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen'])
+
+function guardWebPanePermissions(): void {
+  const web = session.fromPartition(WEB_PANE_PARTITION)
+  web.setPermissionRequestHandler((_contents, permission, callback) =>
+    callback(WEB_PANE_PERMISSIONS.has(permission))
+  )
+  web.setPermissionCheckHandler((_contents, permission) => WEB_PANE_PERMISSIONS.has(permission))
+}
+
 // A second instance would share workspaces.json with the first and silently
 // overwrite its layout, so hand focus to the running window instead.
 const hasInstanceLock = app.requestSingleInstanceLock()
@@ -85,6 +113,19 @@ const hasInstanceLock = app.requestSingleInstanceLock()
 if (!hasInstanceLock) {
   app.quit()
 }
+
+// Inside a web pane, links that want a new window open in the same pane, and
+// navigation never leaves http(s).
+app.on('web-contents-created', (_event, contents) => {
+  if (contents.getType() !== 'webview') return
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isWebUrl(url)) void contents.loadURL(url)
+    return { action: 'deny' }
+  })
+  contents.on('will-navigate', (event, url) => {
+    if (!isWebUrl(url)) event.preventDefault()
+  })
+})
 
 app.on('second-instance', () => {
   if (!mainWindow) return
@@ -111,6 +152,7 @@ void app.whenReady().then(() => {
     }
   }
 
+  guardWebPanePermissions()
   registerIpc()
   buildMenu(() => mainWindow)
   createWindow()

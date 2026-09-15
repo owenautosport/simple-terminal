@@ -7,6 +7,7 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import type { PaneMeta, Settings } from '@shared/types'
 import { THEMES } from '@/theme'
 import { shortenPath } from '@/util/path'
+import { PaneActions } from './PaneActions'
 
 interface Props {
   paneId: string
@@ -18,16 +19,25 @@ interface Props {
   home: string
   focused: boolean
   zoomed: boolean
+  /** False while the pane shows a web page: the shell keeps running out of sight. */
+  visible: boolean
   searchOpen: boolean
   onFocus: () => void
   onSplit: (dir: 'h' | 'v') => void
   onZoom: () => void
   onClose: () => void
+  onToggleKind: () => void
   onTitle: (title: string) => void
   onExit: (exitCode: number) => void
   onRestart: () => void
   onCloseSearch: () => void
-  registerClear: (paneId: string, clear: () => void) => void
+  registerTerminal: (paneId: string, handle: TerminalHandle | null) => void
+}
+
+/** What the menu can ask of a pane's terminal. */
+export interface TerminalHandle {
+  clear: () => void
+  selectAll: () => void
 }
 
 /**
@@ -85,7 +95,10 @@ export function TerminalPane(props: Props): React.JSX.Element {
     searchRef.current = search
     fit.fit()
 
-    callbacks.current.registerClear(paneId, () => term.clear())
+    callbacks.current.registerTerminal(paneId, {
+      clear: () => term.clear(),
+      selectAll: () => term.selectAll()
+    })
 
     const offData = window.terminalApi.onData((event) => {
       if (event.sessionId === sessionId) term.write(event.data)
@@ -142,6 +155,7 @@ export function TerminalPane(props: Props): React.JSX.Element {
       input.dispose()
       title.dispose()
       scroll.dispose()
+      callbacks.current.registerTerminal(paneId, null)
       window.terminalApi.kill(sessionId)
       term.dispose()
       termRef.current = null
@@ -162,17 +176,19 @@ export function TerminalPane(props: Props): React.JSX.Element {
     window.terminalApi.resize(sessionId, term.cols, term.rows)
   }, [settings, sessionId])
 
+  // A hidden terminal must never take focus, or it would swallow the page's keystrokes.
   useEffect(() => {
-    if (focused && !props.searchOpen) termRef.current?.focus()
-  }, [focused, props.searchOpen])
+    if (focused && props.visible && !props.searchOpen) termRef.current?.focus()
+  }, [focused, props.visible, props.searchOpen])
 
   useEffect(() => {
-    if (props.searchOpen && focused) searchInputRef.current?.focus()
-  }, [props.searchOpen, focused])
+    if (props.searchOpen && focused && props.visible) searchInputRef.current?.focus()
+  }, [props.searchOpen, focused, props.visible])
 
   return (
     <div
       className={`pane${focused ? ' pane--focused' : ''}`}
+      style={props.visible ? undefined : { display: 'none' }}
       onMouseDown={props.onFocus}
       data-pane-id={paneId}
     >
@@ -181,42 +197,14 @@ export function TerminalPane(props: Props): React.JSX.Element {
           {props.meta.title?.trim() || `Pane ${props.index}`}
         </span>
         <span className="pane__where">{shortenPath(props.meta.cwd, props.home, 28)}</span>
-        <span className="pane__actions">
-          <button
-            type="button"
-            onClick={() => props.onSplit('h')}
-            title="Split right (⌘D)"
-            aria-label="Split right"
-          >
-            ⬌
-          </button>
-          <button
-            type="button"
-            onClick={() => props.onSplit('v')}
-            title="Split down (⇧⌘D)"
-            aria-label="Split down"
-          >
-            ⬍
-          </button>
-          <button
-            type="button"
-            className={props.zoomed ? 'on' : undefined}
-            onClick={props.onZoom}
-            title={props.zoomed ? 'Restore layout (⇧⌘↩)' : 'Zoom pane (⇧⌘↩)'}
-            aria-label={props.zoomed ? 'Restore layout' : 'Zoom pane'}
-          >
-            {props.zoomed ? '⤡' : '⤢'}
-          </button>
-          <button
-            type="button"
-            className="danger"
-            onClick={props.onClose}
-            title="Close pane (⌘W)"
-            aria-label="Close pane"
-          >
-            ✕
-          </button>
-        </span>
+        <PaneActions
+          kind="terminal"
+          zoomed={props.zoomed}
+          onToggleKind={props.onToggleKind}
+          onSplit={props.onSplit}
+          onZoom={props.onZoom}
+          onClose={props.onClose}
+        />
       </div>
 
       <div className="pane__term" ref={hostRef} />

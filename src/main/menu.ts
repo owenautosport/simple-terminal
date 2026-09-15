@@ -1,4 +1,11 @@
-import { Menu, app, shell, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
+import {
+  Menu,
+  app,
+  shell,
+  webContents,
+  type BrowserWindow,
+  type MenuItemConstructorOptions
+} from 'electron'
 import { PRESET_SIZES } from '@shared/presets'
 
 /**
@@ -17,6 +24,15 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
     command: string,
     arg?: unknown
   ): MenuItemConstructorOptions => ({ label, accelerator, click: () => send(command, arg) })
+
+  // A focused web page selects its own text; inside the app window the renderer
+  // decides, because in a terminal "select all" means the scrollback, which xterm owns.
+  const selectAll = (): void => {
+    const focused = webContents.getFocusedWebContents()
+    const window = getWindow()
+    if (focused && window && focused !== window.webContents) focused.selectAll()
+    else send('select-all')
+  }
 
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
@@ -46,6 +62,9 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
         item('Split Down', 'CmdOrCtrl+Shift+D', 'split', 'v'),
         item('Close Pane', 'CmdOrCtrl+W', 'close-pane'),
         item('Restart Pane', 'CmdOrCtrl+R', 'restart-pane'),
+        { type: 'separator' },
+        item('Switch Pane to Web / Terminal', 'CmdOrCtrl+Shift+B', 'toggle-browser'),
+        item('Go to Address', 'CmdOrCtrl+L', 'focus-address'),
         ...(isMac ? [] : [{ type: 'separator' as const }, item('Settings…', 'Ctrl+,', 'settings')]),
         { type: 'separator' },
         ...(isMac ? [{ role: 'quit' as const }] : [{ role: 'close' as const }])
@@ -54,8 +73,21 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
     {
       label: 'Edit',
       submenu: [
+        // On macOS text fields (the address bar, web forms) need these menu items or
+        // the keys do nothing. Elsewhere Ctrl+Z, Ctrl+X and Ctrl+A belong to the shell.
+        ...(isMac
+          ? [
+              { role: 'undo' as const },
+              { role: 'redo' as const },
+              { type: 'separator' as const },
+              { role: 'cut' as const }
+            ]
+          : []),
         { role: 'copy' },
         { role: 'paste' },
+        ...(isMac
+          ? [{ label: 'Select All', accelerator: 'CmdOrCtrl+A', click: selectAll }]
+          : []),
         { type: 'separator' },
         item('Find…', 'CmdOrCtrl+F', 'find'),
         item('Clear Terminal', 'CmdOrCtrl+K', 'clear'),
@@ -76,7 +108,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
             )
           )
         },
-        item('Tidy', 'CmdOrCtrl+Shift+T', 'tidy'),
+        item('Even Out Panes', 'CmdOrCtrl+Shift+T', 'tidy'),
         item('Zoom Pane', 'CmdOrCtrl+Shift+Return', 'zoom'),
         { type: 'separator' },
         item('Focus Left', 'CmdOrCtrl+Alt+Left', 'focus', 'left'),

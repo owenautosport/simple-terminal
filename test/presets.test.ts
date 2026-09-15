@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PRESET_SIZES, buildPreset, gridShape } from '@/layout/presets'
-import { layoutRects, listPanes } from '@/layout/tree'
+import { layoutRects, listPanes, readingOrder } from '@/layout/tree'
 
 let counter = 0
 const makePane = (): { id: string; sessionId: string } => {
@@ -35,6 +35,18 @@ describe('buildPreset', () => {
     const rects = layoutRects(tree, { x: 0, y: 0, w: 100, h: 100 })
     const sizes = [...rects.values()].map((r) => `${r.w}x${r.h}`)
     expect(new Set(sizes)).toEqual(new Set(['50x50']))
+  })
+
+  it('hands out panes in reading order: left to right, then top to bottom', () => {
+    counter = 0
+    const tree = buildPreset(6, makePane)
+    expect(readingOrder(tree).map((p) => p.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'])
+  })
+
+  it('builds columns, so a pane is paired with the one above or below it', () => {
+    counter = 0
+    const tree = buildPreset(4, makePane)
+    expect(tree.kind === 'split' && tree.dir).toBe('h')
   })
 
   it('rejects an unsupported size', () => {

@@ -127,6 +127,19 @@ export function layoutRects(node: LayoutNode, viewport: Rect): Map<PaneId, Rect>
 }
 
 /**
+ * Panes as a person reads the screen: left to right along the top, then the next
+ * row down. Tree order differs from this once the layout is built in columns.
+ */
+export function readingOrder(node: LayoutNode): Leaf[] {
+  const rects = layoutRects(node, { x: 0, y: 0, w: 1000, h: 1000 })
+  return listPanes(node).sort((p, q) => {
+    const a = rects.get(p.id)!
+    const b = rects.get(q.id)!
+    return Math.abs(a.y - b.y) > EPSILON ? a.y - b.y : a.x - b.x
+  })
+}
+
+/**
  * The pane a directional focus move should land on: the nearest pane on that side
  * that still overlaps the current one on the perpendicular axis.
  */

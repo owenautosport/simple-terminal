@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { activeWorkspace, initialState, reducer, type AppState, type IdSource } from '@/state/reducer'
-import { listPanes } from '@/layout/tree'
+import { layoutRects, listPanes, readingOrder } from '@/layout/tree'
 
 let counter = 0
 const ids: IdSource = {
@@ -108,13 +108,72 @@ describe('workspaces', () => {
 })
 
 describe('preset', () => {
-  it('replaces the layout with n fresh panes, all in the given directory', () => {
+  it('keeps the running pane and adds fresh ones in the given directory', () => {
+    const before = activeWorkspace(start())
+    const original = listPanes(before.layout)[0]!
     const state = dispatch(start(), { type: 'preset', size: 6, cwd: '/srv' })
     const workspace = activeWorkspace(state)
-    expect(listPanes(workspace.layout)).toHaveLength(6)
+    const panes = readingOrder(workspace.layout)
+    expect(panes).toHaveLength(6)
     expect(Object.keys(workspace.panes)).toHaveLength(6)
-    expect(Object.values(workspace.panes).every((p) => p.cwd === '/srv')).toBe(true)
-    expect(workspace.focusedPaneId).toBe(listPanes(workspace.layout)[0]!.id)
+    // The existing pane keeps its id, session and directory, and takes the first slot.
+    expect(panes[0]).toEqual(original)
+    expect(workspace.panes[original.id]?.cwd).toBe('/home/test')
+    expect(panes.slice(1).every((p) => workspace.panes[p.id]?.cwd === '/srv')).toBe(true)
+    expect(workspace.focusedPaneId).toBe(original.id)
+  })
+
+  it('never restarts a running terminal when growing the grid', () => {
+    const four = dispatch(start(), { type: 'preset', size: 4, cwd: '/a' })
+    const sessionsBefore = readingOrder(activeWorkspace(four).layout).map((p) => p.sessionId)
+    const nine = dispatch(four, { type: 'preset', size: 9, cwd: '/b' })
+    const sessionsAfter = readingOrder(activeWorkspace(nine).layout).map((p) => p.sessionId)
+    expect(sessionsAfter.slice(0, 4)).toEqual(sessionsBefore)
+    expect(new Set(sessionsAfter).size).toBe(9)
+  })
+
+  it('keeps the focused pane when shrinking the grid', () => {
+    const six = dispatch(start(), { type: 'preset', size: 6, cwd: '/a' })
+    const last = readingOrder(activeWorkspace(six).layout)[5]!
+    const focused = dispatch(six, { type: 'focus-pane', paneId: last.id })
+    const two = activeWorkspace(dispatch(focused, { type: 'preset', size: 2, cwd: '/a' }))
+    const ids = readingOrder(two.layout).map((p) => p.id)
+    expect(ids).toHaveLength(2)
+    expect(ids).toContain(last.id)
+    expect(two.focusedPaneId).toBe(last.id)
+    expect(Object.keys(two.panes).sort()).toEqual([...ids].sort())
+  })
+
+  it('fills a closed grid pane from above or below, not from the side', () => {
+    const four = activeWorkspace(dispatch(start(), { type: 'preset', size: 4, cwd: '/a' }))
+    const [topLeft, topRight, bottomLeft, bottomRight] = readingOrder(four.layout)
+    const state = { ...start(), workspaces: [four], activeWorkspaceId: four.id }
+    const closed = activeWorkspace(dispatch(state, { type: 'close-pane', paneId: topLeft!.id }))
+    const rects = layoutRects(closed.layout, { x: 0, y: 0, w: 100, h: 100 })
+    // The pane below grows to fill the whole left column; the right column is untouched.
+    expect(rects.get(bottomLeft!.id)).toEqual({ x: 0, y: 0, w: 50, h: 100 })
+    expect(rects.get(topRight!.id)).toEqual({ x: 50, y: 0, w: 50, h: 50 })
+    expect(rects.get(bottomRight!.id)).toEqual({ x: 50, y: 50, w: 50, h: 50 })
+  })
+})
+
+describe('web panes', () => {
+  it('turns the focused pane into a web pane and back, keeping its session', () => {
+    const state = start()
+    const pane = listPanes(activeWorkspace(state).layout)[0]!
+    const web = dispatch(state, { type: 'set-pane-kind', kind: 'browser' })
+    expect(activeWorkspace(web).panes[pane.id]?.kind).toBe('browser')
+    expect(listPanes(activeWorkspace(web).layout)[0]).toEqual(pane)
+    const back = dispatch(web, { type: 'set-pane-kind', kind: 'terminal' })
+    expect(activeWorkspace(back).panes[pane.id]?.kind).toBe('terminal')
+    expect(listPanes(activeWorkspace(back).layout)[0]).toEqual(pane)
+  })
+
+  it('remembers the address a web pane was showing', () => {
+    const state = dispatch(start(), { type: 'set-pane-kind', kind: 'browser' })
+    const paneId = activeWorkspace(state).focusedPaneId
+    const visited = dispatch(state, { type: 'pane-meta', paneId, patch: { url: 'https://example.com/' } })
+    expect(activeWorkspace(visited).panes[paneId]?.url).toBe('https://example.com/')
   })
 })
 
